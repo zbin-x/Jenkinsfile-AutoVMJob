@@ -1,0 +1,321 @@
+#jenkinsfile V221214 bk
+pipeline  {
+    agent any
+        options {
+            sidebarLinks([
+                [displayName: 'Download', iconFileName: 'package.png', urlName: 'http://192.168.1.50:8080/job/RoboFlow/buildTimeTrend']
+            ])
+        }
+        environment {
+        SSH_USER = """${sh(
+            returnStdout: true,
+            script: '''if [ "${OS}" = "Linux" ]; then echo -n "elephantrob";
+                    elif [ "${OS}" = "Windows-280" ]; then echo -n "jenkins";
+                    elif [ "${OS}" = "Windows-320" ]; then echo -n "jenkins";
+                    elif [ "${OS}" = "Pi-280" ]; then echo -n "jenkins";
+                    elif [ "${OS}" = "Pi-320" ]; then echo -n "jenkins";
+                    elif [ "${OS}" = "Pi-600" ]; then echo -n "jenkins";
+                    elif [ "${OS}" = "Win-Mypalletizer-260" ]; then echo -n "jenkins";
+                    else echo "SSH_USER_NOT_SET"; fi'''
+        ).trim()}"""
+        USER_DIR = """${sh(
+            returnStdout: true,
+            script: '''if [ "${OS}" = "Linux" ]; then echo -n "/home/elephantrob";
+                    elif [ "${OS}" = "Windows-280" ]; then echo -n "C:/users/jenkins/desktop";
+                    elif [ "${OS}" = "Windows-320" ]; then echo -n "C:/users/jenkins/desktop";
+                    elif [ "${OS}" = "Pi-280" ]; then echo -n "/home/jenkins";
+                    elif [ "${OS}" = "Pi-320" ]; then echo -n "/home/jenkins";
+                    elif [ "${OS}" = "Pi-600" ]; then echo -n "/home/jenkins";
+                    elif [ "${OS}" = "Win-Mypalletizer-260" ]; then echo -n "C:/users/jenkins/desktop";
+                    else echo "USER_DIR_NOT_SET"; fi'''
+        ).trim()}"""
+        IP = """${sh(
+            returnStdout: true,
+            script: '''if [ "${OS}" = "Linux" ]; then echo -n "192.168.122.222";
+                    elif [ "${OS}" = "Windows-280" ]; then echo -n "192.168.122.48";
+                    elif [ "${OS}" = "Windows-320" ]; then echo -n "192.168.122.48";
+                    elif [ "${OS}" = "Pi-280" ]; then echo -n "192.168.122.159";
+                    elif [ "${OS}" = "Pi-320" ]; then echo -n "192.168.122.159";
+                    elif [ "${OS}" = "Pi-600" ]; then echo -n "192.168.122.159";
+                    elif [ "${OS}" = "Win-Mypalletizer-260" ]; then echo -n "192.168.122.48";
+                    else echo "IP_NOT_SET"; fi'''
+        ).trim()}"""
+        DEB_IP = "192.168.122.143"
+        CHECKOUT_DIR = """${sh(
+            returnStdout: true,
+            script: '''if [ "${OS}" = "Linux" ]; then echo -n "RoboFlow";
+                    elif [ "${OS}" = "Windows-280" ]; then echo -n "win-280";
+                    elif [ "${OS}" = "Windows-320" ]; then echo -n "win-320";
+                    elif [ "${OS}" = "Pi-280" ]; then echo -n "mycot280";
+                    elif [ "${OS}" = "Pi-320" ]; then echo -n "mycot320";
+                    elif [ "${OS}" = "Pi-600" ]; then echo -n "pro600";
+                    elif [ "${OS}" = "Win-Mypalletizer-260" ]; then echo -n "win-myPalletizer260";
+                    else echo "CHECKOUT_DIR_NOT_SET"; fi'''   //; echo -n "/build_${BUILD_NUMBER}"
+        ).trim()}"""
+        SCRIPT_NAME = """${sh(
+            returnStdout: true,
+            script: '''if [ "${OS}" = "Windows-280" ]; then echo -n "win280";
+                    elif [ "${OS}" = "Windows-320" ]; then echo -n "win320";
+                    elif [ "${OS}" = "Win-Mypalletizer-260" ]; then echo -n "myp260";
+                    elif [ "${OS}" = "Pi-280" ]; then echo -n "Pi280";
+                    elif [ "${OS}" = "Pi-320" ]; then echo -n "Pi320";
+                    elif [ "${OS}" = "Pi-600" ]; then echo -n "Pro600";
+                    elif [ "${OS}" = "Linux" ]; then echo -n "Linux";
+                    else echo "SCRIPT_NAME_NOT_SET"; fi'''   
+        ).trim()}"""
+        CMAKE_PARAMETERS = """${sh(
+            returnStdout: true,
+            script: '''if [ "${OS}" = "Windows-280" ]; then echo -n "-DROBOT:STRING=ROBOT_MYCOBOT";
+                    elif [ "${OS}" = "Windows-320" ]; then echo -n "-DROBOT:STRING=ROBOT_MYCOBOTPRO";
+                    elif [ "${OS}" = "Pi-280" ]; then echo -n "-DROBOT:STRING=ROBOT_MYCOBOT/-DROBOT_CONTROLLER:STRING=ROBCTL_ATOMMAIN";
+                    elif [ "${OS}" = "Pi-320" ]; then echo -n "-DROBOT:STRING=ROBOT_MYCOBOTPRO/-DROBOT_CONTROLLER:STRING=ROBCTL_ATOMMAIN";
+                    elif [ "${OS}" = "Pi-600" ]; then echo -n "-DROBOT:STRING=MASTER600/-DROBOT_CONTROLLER:STRING=ROBCTL_PHOENIX/-DENABLE_OLD_REL_LIBRARY_PATH:BOOL=ON";
+                    elif [ "${OS}" = "Win-Mypalletizer-260" ]; then echo -n "-DROBOT:STRING=ROBOT_MYPARTNER";
+                    else echo "CMAKE_PARAMETER_NOT_SET"; fi'''
+        ).trim()}"""
+        TARGET_ARCH = """${sh(
+            returnStdout: true,
+            script: '''if [ "${OS}" = "Pi-280" ]; then echo -n "aarch64";
+                    elif [ "${OS}" = "Pi-320" ]; then echo -n "aarch64";
+                    elif [ "${OS}" = "Pi-600" ]; then echo -n "aarch64";
+                    else echo "TARGET_ARCH_NOT_SET"; fi'''
+        ).trim()}"""
+    }
+    stages {
+        stage('Setup parameters') {
+            steps {
+                script { 
+                    properties([
+                        parameters([
+                            choice(
+                                choices: ['Linux', 'Windows-280','Windows-320','Pi-280','Pi-320','Pi-600','Win-Mypalletizer-260'], 
+                                description: '''Select OS, notice:
+                                Linux Branch:                           develop
+                                Windows-280 Branch:             develop
+                                Windows-320 Branch:             develop
+                                Pi-280 Branch:                         develop
+                                Pi-320 Branch:                         develop
+                                Pi-600 Branch:                         pro600 
+                                Win-Mypalletizer-260:              4-DOF-Robot
+                                Notice:
+                                When build complete,check package at left Download
+                                File_number is build number''', 
+                                name: 'OS'
+                            ),
+                            gitParameter(branch: '',
+                                branchFilter: 'origin/(.*)',
+                                defaultValue: 'develop',
+                                description: 'Select Your Branch',
+                                name: 'BRANCH',
+                                quickFilterEnabled: true,
+                                selectedValue: 'DEFAULT',
+                                sortMode: 'ASCENDING_SMART',
+                                tagFilter: '*',
+                                type: 'PT_BRANCH_TAG',
+                                listSize: '10')
+                        ])
+                    ])
+                }
+            }
+        }
+        stage ('Cleanup') {
+            steps {
+                script {
+                    sh 'whoami'
+                    echo "SSH_USER = ${SSH_USER}"
+                    echo "IP = ${IP}"
+                    echo "CHECKOUT_DIR = ${CHECKOUT_DIR}"
+                    echo "CMAKE_PARAMETERS = ${CMAKE_PARAMETERS}"
+                    echo "TARGET_ARCH = ${TARGET_ARCH}"
+                    /* sh 'ssh ${SSH_USER}@${IP} rm -rf /home/${SSH_USER}/${CHECKOUT_DIR}/RoboFlow' */
+                    if (params.OS == 'Linux') {
+                        echo "This Build is Linux"
+                        sh 'ssh ${SSH_USER}@${DEB_IP} rm -rf ${USER_DIR}/buildScript/jenkins_RoboFlow_build.sh'
+                        sh 'ssh ${SSH_USER}@${IP} rm -rf ${USER_DIR}/RoboFlow'
+                        sh 'ssh ${SSH_USER}@${IP} rm -rf ${USER_DIR}/RoboFlow_Linux_x86_64.tar.gz'
+                        sh 'echo ${SCRIPT_NAME}'
+                    } else if (params.OS == 'Pi-280' || params.OS == 'Pi-320' || params.OS == 'Pi-600') {
+                        echo "This Build is ${CHECKOUT_DIR}"
+                        sh 'ssh ${SSH_USER}@${IP} rm -rf ${USER_DIR}/${CHECKOUT_DIR}/RoboFlow'
+                        sh 'ssh ${SSH_USER}@${IP} rm -rf ${USER_DIR}/${CHECKOUT_DIR}/build'
+                        sh 'ssh ${SSH_USER}@${IP} rm -rf ${USER_DIR}/${CHECKOUT_DIR}/RoboFlow_Linux_x86_64.tar.gz'
+                        sh 'echo ${SCRIPT_NAME}'
+                    } else if (params.OS == 'Windows-280' || params.OS == 'Windows-320' || params.OS == 'Win-Mypalletizer-260') {
+                        echo "This Build is ${CHECKOUT_DIR}"
+                        sh 'scp -r /var/lib/jenkins/jobs/${JOB_NAME}/workspace/scripts/${SCRIPT_NAME}clean.bat ${SSH_USER}@${IP}:/${USER_DIR}/${SCRIPT_NAME}clean.bat'
+                        sh 'ssh ${SSH_USER}@${IP} ${USER_DIR}/${SCRIPT_NAME}clean.bat'
+                        sh 'echo ${SCRIPT_NAME}'
+                    } else {
+                        echo "Unsupported OS: ${params.OS}"
+                    }
+                }
+            }
+        }
+        stage ('Build') {
+            options {
+                timeout(time: 1, unit: 'HOURS')
+            }
+            steps {
+                script {
+                    if (params.OS == 'Linux') {
+                        echo "========Build on SSH Server143 for Linux========"
+                        sh '''#!/bin/bash 
+                        SOURCE_DIR=/var/lib/jenkins/workspace/${JOB_NAME}/
+                        DEST_DIR=${USER_DIR}/BuildWorkSpace/RoboPro/
+                        rsync -avpgolr --delete-before $SOURCE_DIR ${SSH_USER}@${DEB_IP}:$DEST_DIR'''
+                        sh 'scp /var/lib/jenkins/jobs/${JOB_NAME}/workspace/scripts/jenkins_RoboFlow_build.sh ${SSH_USER}@${DEB_IP}:${USER_DIR}/buildScript/'
+                        sh 'ssh ${SSH_USER}@${DEB_IP} sh ${USER_DIR}/buildScript/jenkins_RoboFlow_build.sh'
+                        echo "========Build on SSH Server222 for Linux========"
+                        sh 'scp -r  /var/lib/jenkins/jobs/${JOB_NAME}/workspace/ ${SSH_USER}@${IP}:${USER_DIR}/RoboFlow'
+                        sh 'ssh ${SSH_USER}@${IP} sh ${USER_DIR}/RoboFlow/scripts/c-make-linux.sh'
+                    } else if (params.OS == 'Pi-280' || params.OS == 'Pi-320' || params.OS == 'Pi-600') {
+                        sh 'ssh ${SSH_USER}@${IP} mkdir -p ${USER_DIR}/${CHECKOUT_DIR}/RoboFlow'
+                        sh 'scp -r  /var/lib/jenkins/jobs/${JOB_NAME}/workspace/* ${SSH_USER}@${IP}:${USER_DIR}/${CHECKOUT_DIR}/RoboFlow/'
+                        sh 'ssh ${SSH_USER}@${IP} chmod +x ${USER_DIR}/${CHECKOUT_DIR}/RoboFlow/scripts/*'
+                        sh 'ssh ${SSH_USER}@${IP} cp ${USER_DIR}/${CHECKOUT_DIR}/RoboFlow/scripts/cmakePi.sh ${USER_DIR}/${CHECKOUT_DIR}/RoboFlow/'
+                        sh 'ssh ${SSH_USER}@${IP} CHECKOUT_DIR="${CHECKOUT_DIR}" ${USER_DIR}/${CHECKOUT_DIR}/RoboFlow/cmakePi.sh ${CMAKE_PARAMETERS}'
+                    } else if (params.OS == 'Windows-280' || params.OS == 'Windows-320' || params.OS == 'Win-Mypalletizer-260') {
+                        sh 'scp -r /var/lib/jenkins/jobs/${JOB_NAME}/workspace ${SSH_USER}@${IP}:/C:/${CHECKOUT_DIR}/RoboFlow'
+                        sh 'scp -r /var/lib/jenkins/jobs/${JOB_NAME}/workspace/scripts/${SCRIPT_NAME}build.bat ${SSH_USER}@${IP}:/${USER_DIR}/${SCRIPT_NAME}build.bat'
+                        sh 'ssh ${SSH_USER}@${IP} ${USER_DIR}/${SCRIPT_NAME}build.bat'  
+                    } else {
+                        echo "Unsupported OS: ${params.OS}"
+                    }
+                }
+            }
+        }
+        stage('Package') {
+            steps {
+                //sh 'ssh ${SSH_USER}@${IP} TARGET_ARCH=${TARGET_ARCH} /home/${SSH_USER}/${CHECKOUT_DIR}/RoboFlow/scripts/package-linux.sh'
+                script {
+                    if (params.OS == 'Linux') {
+                        echo "${SCRIPT_NAME}"
+                        echo "======Linux-i386======"
+                        sh '''
+                        #!/bin/bash
+                        DIST_DIR_BUILD=${USER_DIR}/BuildWorkSpace/dist
+                        DIST_DIR_PACKAGE=/var/lib/jenkins/workspace/buildPackge/packge${USER_DIR}/RoboFlow
+                        PACKGE_DIR=/var/lib/jenkins/workspace/buildPackge/packge
+                        OUTPUT_DIR=/var/lib/jenkins/workspace/buildPackge/output/Pipeline_RoboFlow_linux/${BUILD_NUMBER}-deb-`date | awk -F " " '{print $4""$3""$2}'`
+                        mkdir -p $OUTPUT_DIR
+                        scp -r ${SSH_USER}@${DEB_IP}:$DIST_DIR_BUILD/* $DIST_DIR_PACKAGE/
+                        dpkg -b $PACKGE_DIR $OUTPUT_DIR/${JOB_NAME}_v3.3.2.${BUILD_NUMBER}-deb-`date | awk -F " " '{print $4""$3""$2}'`_i386.deb'''
+                        echo "======Linux-x86======"
+                        sh 'ssh ${SSH_USER}@${IP} chmod 777 ${USER_DIR}/RoboFlow/scripts/startPak-linux.sh'
+                        sh 'ssh ${SSH_USER}@${IP} sh ${USER_DIR}/RoboFlow/scripts/startPak-linux.sh'                        
+                    } else if (params.OS == 'Pi-280' || params.OS == 'Pi-320' || params.OS == 'Pi-600') {
+                        echo "${SCRIPT_NAME}"
+                        sh 'ssh ${SSH_USER}@${IP} CHECKOUT_DIR=${CHECKOUT_DIR} ${USER_DIR}/${CHECKOUT_DIR}/RoboFlow/scripts/startPak-Pi.sh'
+                    } else if (params.OS == 'Windows-280' || params.OS == 'Windows-320' || params.OS == 'Win-Mypalletizer-260') {
+                        echo "${SCRIPT_NAME}"
+                        sh 'ssh ${SSH_USER}@${IP} C:/zip.exe -r C:/${CHECKOUT_DIR}/build/RoboFlow.zip C:/${CHECKOUT_DIR}/build/bin'
+                    } else {
+                        echo "Unsupported OS: ${params.OS}"
+                    }
+                }
+            }
+        }
+        stage('Smoke Test') {
+            //when { equals expected: true, actual: false }
+            steps {
+                script {
+                echo 'Smoke Testing... NOT IMPLEMENTED'
+                if (params.OS == 'Linux') {
+                        echo "Linux"
+                        echo "======Linux-i386======"
+                        echo "======Linux-x86======"
+                    } else if (params.OS == 'Pi-280' || params.OS == 'Pi-320' || params.OS == 'Pi-600') {
+                        echo "${SCRIPT_NAME}"
+                    } else if (params.OS == 'Windows-280' || params.OS == 'Windows-320' || params.OS == 'Win-Mypalletizer-260') {
+                        echo "${SCRIPT_NAME}"
+                    } else {
+                        echo "Unsupported OS: ${params.OS}"
+                    }
+                }
+            }
+        }
+        stage('Storage') {
+            steps {
+                script {
+                    if (params.OS == 'Linux') {
+                        echo "Linux"
+                        echo "======Linux-i386======"
+                        echo "already Storage,can found /var/lib/jenkins/workspace/buildPackge/output/Pipeline_RoboFlow_linux/"
+                        echo "======Linux-x86======"
+                        sh 'ssh ${SSH_USER}@${IP} cp ${USER_DIR}/RoboFlow/build/bin/dist/RoboFlow_Linux_x86_64.tar.gz ${USER_DIR}'
+                        sh '''
+                            mkdir -p /var/lib/jenkins/workspace/buildPackge/output/Pipeline_RoboFlow_linux/${BUILD_NUMBER}-ubu-`date | awk -F " " '{print $4""$3""$2}'`
+                            scp ${SSH_USER}@${IP}:${USER_DIR}/RoboFlow_Linux_x86_64.tar.gz /var/lib/jenkins/workspace/buildPackge/output/Pipeline_RoboFlow_linux/${BUILD_NUMBER}-ubu-`date | awk -F " " '{print $4""$3""$2}'`/RoboFlow_Linux_x86_64-ubu-`date | awk -F " " '{print $4""$3""$2}'`.tar.gz'''
+                    } else if (params.OS == 'Pi-280' || params.OS == 'Pi-320' || params.OS == 'Pi-600') {
+                        echo "${SCRIPT_NAME}"
+                        sh '''
+                            mkdir -p /var/lib/jenkins/workspace/buildPackge/output/Pipeline_RoboFlow_Pi/${BUILD_NUMBER}-${SCRIPT_NAME}-`date | awk -F " " '{print $4""$3""$2}'`
+                            scp ${SSH_USER}@${IP}:${USER_DIR}/${CHECKOUT_DIR}/RoboFlow_Linux_x86_64.tar.gz /var/lib/jenkins/workspace/buildPackge/output/Pipeline_RoboFlow_Pi/${BUILD_NUMBER}-${SCRIPT_NAME}-`date | awk -F " " '{print $4""$3""$2}'`/RoboFlow_Linux_x86_64_${SCRIPT_NAME}.tar.gz'''
+                    } else if (params.OS == 'Windows-280' || params.OS == 'Windows-320' || params.OS == 'Win-Mypalletizer-260') {
+                        echo "${CHECKOUT_DIR}"
+                        sh '''
+                            mkdir -p /var/lib/jenkins/workspace/buildPackge/output/Pipeline_RoboFlow_win/${BUILD_NUMBER}-${SCRIPT_NAME}-`date | awk -F " " '{print $4""$3""$2}'`
+                            scp -r ${SSH_USER}@${IP}:/C:/${CHECKOUT_DIR}/build/RoboFlow.zip /var/lib/jenkins/workspace/buildPackge/output/Pipeline_RoboFlow_win/${BUILD_NUMBER}-${SCRIPT_NAME}-`date | awk -F " " '{print $4""$3""$2}'`/RoboFlow-${CHECKOUT_DIR}.zip'''
+                    } else {
+                        echo "Unsupported OS: ${params.OS}"
+                    }
+                }
+            }
+        }
+        stage('Deploy') {
+            steps {
+                script {
+                if (params.OS == 'Linux') {
+                        echo "Linux"
+                        echo "======Linux-i386======"
+                        sh '''
+                            cp /var/lib/jenkins/workspace/buildPackge/output/Pipeline_RoboFlow_linux/${BUILD_NUMBER}-deb-`date | awk -F " " '{print $4""$3""$2}'`/${JOB_NAME}_v3.3.2.${BUILD_NUMBER}-deb-`date | awk -F " " '{print $4""$3""$2}'`_i386.deb \
+                                    /var/lib/jenkins/jobs/RoboFlow/workspace/RoboFlow_Linux_v3.3.2-deb_i386.deb'''
+                        archiveArtifacts artifacts: "RoboFlow_Linux_v3.3.2-deb_i386.deb", onlyIfSuccessful: true
+                        echo "merge with Linux-x86"
+                        echo "======Linux-x86======"
+                        sh '''
+                            scp ${SSH_USER}@${IP}:/home/${SSH_USER}/RoboFlow_Linux_x86_64.tar.gz \
+                                    /var/lib/jenkins/jobs/RoboFlow/workspace/RoboFlow_Linux_x86_64-ubu.tar.gz'''
+                        archiveArtifacts artifacts: "RoboFlow_Linux_x86_64-ubu.tar.gz", onlyIfSuccessful: true
+                    } else if (params.OS == 'Pi-280' || params.OS == 'Pi-320' || params.OS == 'Pi-600') {
+                        echo "${SCRIPT_NAME}"
+                        sh '''
+                            scp ${SSH_USER}@${IP}:/home/${SSH_USER}/${CHECKOUT_DIR}/RoboFlow_Linux_x86_64.tar.gz \
+                                    /var/lib/jenkins/jobs/RoboFlow/workspace/RoboFlow_Linux_aarch64_${SCRIPT_NAME}.tar.gz'''
+                        archiveArtifacts artifacts: "RoboFlow_Linux_aarch64_${SCRIPT_NAME}.tar.gz", onlyIfSuccessful: true
+                    } else if (params.OS == 'Windows-280' || params.OS == 'Windows-320' || params.OS == 'Win-Mypalletizer-260') {
+                        echo "${CHECKOUT_DIR}"
+                        sh '''
+                            scp ${SSH_USER}@${IP}:/C:/${CHECKOUT_DIR}//build/RoboFlow.zip \
+                                    /var/lib/jenkins/jobs/RoboFlow/workspace/RoboFlow_${CHECKOUT_DIR}.zip'''
+                        archiveArtifacts artifacts: "RoboFlow_${CHECKOUT_DIR}.zip", onlyIfSuccessful: true
+                    } else {
+                        echo "Unsupported OS: ${params.OS}"
+                    }
+                }
+            }
+        }
+        stage('Auto Test') {
+            //when { equals expected: true, actual: false }
+            steps {
+                echo 'Auto Testing... NOT IMPLEMENTED'
+                script {
+                if (params.OS == 'Linux') {
+                        echo "Linux"
+                        echo "======Linux-i386======"
+
+                        echo "======Linux-x86======"
+
+                    } else if (params.OS == 'Pi-280' || params.OS == 'Pi-320' || params.OS == 'Pi-600') {
+                        echo "${SCRIPT_NAME}"
+                    } else if (params.OS == 'Windows-280' || params.OS == 'Windows-320' || params.OS == 'Win-Mypalletizer-260') {
+                        echo "${SCRIPT_NAME}"
+                    } else {
+                        echo "Unsupported OS: ${params.OS}"
+                    }
+                }
+            }
+        }
+    }
+}
